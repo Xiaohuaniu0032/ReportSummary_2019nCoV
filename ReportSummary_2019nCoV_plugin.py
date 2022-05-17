@@ -1,6 +1,7 @@
 import os
 import sys
 import argparse
+import re
 
 def parse_args():
 	AP = argparse.ArgumentParser("Collect 2019nCoV info")
@@ -36,12 +37,23 @@ def get_bc_reads_num(infile): # IonCode_0301_rawlib.ionstats_alignment.json
 		reads_num = json_str['full']['num_reads']
 		mean_len  = json_str['full']['mean_read_length']
 		max_len   = json_str['full']['max_read_length']
-		total_base_num = json_str['full']['num_bases']
-		q20_base_num = ''
+		#total_base_num = json_str['full']['num_bases']
+		#q20_base_num = ''
 
-def get_first_run_plugin_result(plugin_name):
+	return([reads_num,mean_len,max_len])
 
-def get_cov_info(infile):
+def get_first_run_plugin_result(report_dir,plugin_name):
+
+
+
+def get_cov_info(infile): # plugin_out/coverageAnalysis_out.xxx/*.bc_summary.xls
+	'''
+	Barcode ID      Sample Name     Mapped Reads    On Target       SampleID        Mean Depth      Uniformity
+	IonCode_0301    A7      5581930 95.87%  0.06%   432.2   96.90%
+	IonCode_0302    D4      6731029 94.09%  0.09%   508.8   96.95%
+	IonCode_0303    D6      5216480 96.11%  0.09%   404.1   96.43%
+
+	'''
 	with open(infile,'r') as cov_summary:
 		for line in cov_summary.readline():
 			if line.startwith('Barcode ID'):
@@ -65,17 +77,17 @@ def amplicon_cov_info(infile):
 			vals = line.split('\t')
 			pool_info = vals[4] # GENE_ID=LDLRAP1;POOL=1;CNV_HS=0;CNV_ID=LDLRAP1
 			total_reads = vals[-6]
-			for v in pool_info.split(';')
+			for v in pool_info.split(';'):
 				if re.match('POOL',v):
 					if v == 'POOL=1':
 						p1_num.append(total_reads)
 					if v == 'POOL=2':
 						p2_num.append(total_reads)
 
-	avg_p1 = 
-	avg_p2 =
+	avg_p1 = float(mean(p1_num),2)
+	avg_p2 = float(mean(p2_num),2)
 
-	return(avg_p1,avg_p2) 
+	return(avg_p1,avg_p2)
 
 def get_tvc_info(infile):
 
@@ -83,7 +95,11 @@ def get_tvc_info(infile):
 def get_cons_info(infile):
 
 
-	# plugin_out/coverageAnalysis_out.xxx/*.bc_summary.xls
+def get_pangolin_info(infile):
+
+
+
+	
 def main():
 	args = parse_args()
 	report_name = os.path.basename(args.report_dir)
@@ -109,13 +125,25 @@ def main():
 	############################## for each barcode ##############################
 	bams = get_bams(args.report_dir) # [IonXpress_003_rawlib.bam,]
 	ion_params_00_json = os.path.join(args.report_dir,'ion_params_00.json')
-	print(ion_params_00_json)
+	
+	# check ion_params_00.json exists
+	if os.path.exists(ion_params_00_json):
+		print(ion_params_00_json)
+		continue
+	else:
+		sys.exit('[Error: can not find ion_params_00.json file, will exit]')
+	
 	all_barcodes = barcode_to_sampleName(ion_params_00_json)
+
 	for bc in all_barcodes:
 		# IonCode_0303
-		sample_name = all_barcodes[bc] # 
+		sample_name = all_barcodes[bc] # maybe None
+		
+		# check pangolin plugin
 		pangolin_result = ''
-		nextclade_result = ''
+		
+		nextclade_result = 'NA'
+
 		aln_stat = "%s/%s_rawlib.ionstats_alignment.json" % (args.report_dir,bc)
 		
 		# 
@@ -123,60 +151,3 @@ def main():
 		cons_N_pct = 
 		pool1_avg_reads_per_amplicon = ''
 		pool2_avg_reads_per_amplicon = ''
-
-
-
-		
-
-
-
-
-
-'''
-output file header line
-
-建库日期
-测序日期
-expName
-报告名称
-芯片类型
-芯片总数据量
-Barcode
-样本名
-Pangolin分型
-Nextclade分型
-样本数据量
-均一性
-组装N比例
-TVC变异位点个数
-一致性序列变异位点个数
-一致性序列杂合SNP个数
-Q20碱基百分比
-Reads平均长度
-比对Reads数
-Ontarget率
-平均测序深度
-Pool1-Mean Reads per Amplicon
-Pool2-Mean Reads per Amplicon
-是否提交国家疾控
-提交日期
-备注
-'''
-
-my ($report_dir,$this_plugin_out_dir) = @ARGV;
-
-my $report_name = basename($report_dir);
-my $outfile = "$this_plugin_out_dir/$report_name\.ReportSummary.xls";
-open O, ">$outfile" or die;
-print O "建库日期\t测序日期\texpName\t报告名称\t芯片类型\t芯片总数据量\tBarcode\t样本名\tPangolin分型\tNextclade分型\t样本数据量\t均一性\t组装N比例\tTVC变异位点个数\t一致性序列变异位点个数\t一致性序列杂合SNP个数\tQ20碱基百分比\tReads平均长度\t比对Reads数\tOntarget率\t平均测序深度\tPool1-Mean Reads per Amplicon\tPool2-Mean Reads per Amplicon\t是否提交国家疾控\t提交日期\t备注\n";
-# status.txt [1 for complete]
-# serialized_S5yanzheng-20211223-chip2-MeanAccuracy_v2.json
-
-# 建库日期？
-# 测序日期？
-# expName
-# 报告名称
-# 芯片类型
-# 总数据量
-
-# For each barcode
