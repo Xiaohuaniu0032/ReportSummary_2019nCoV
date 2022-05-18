@@ -43,15 +43,33 @@ def get_bc_reads_num(infile): # IonCode_0301_rawlib.ionstats_alignment.json
 	return([reads_num,mean_len,max_len])
 
 def get_first_run_plugin_result(report_dir,plugin_name):
-
-
-
-def get_cov_info(infile): # plugin_out/coverageAnalysis_out.xxx/*.bc_summary.xls
 	'''
-	Barcode ID      Sample Name     Mapped Reads    On Target       SampleID        Mean Depth      Uniformity
-	IonCode_0301    A7      5581930 95.87%  0.06%   432.2   96.90%
-	IonCode_0302    D4      6731029 94.09%  0.09%   508.8   96.95%
-	IonCode_0303    D6      5216480 96.11%  0.09%   404.1   96.43%
+	SARS_CoV_2_coverageAnalysis
+	SARS_CoV_2_variantCaller
+	generateConsensus
+	
+	'''
+	start_json_list = glob.glob("%s/%s_out.*/startplugin.json" % (report_dir,plugin_name))
+	if len(start_json_list) == 0:
+		return([])
+	else:
+		xxx_int = []
+		for file in start_json_list:
+			plugin_full_path = os.path.dirname(file)
+			plugin_name = os.path.basename(plugin_full_path)
+			xxx = int(plugin_name.split('.')[1])
+			xxx_int.append(xxx)
+
+		first_xxx = xxx_int.sort()[0]
+		first_name = "%s_.%s" % (plugin_name,first_xxx)
+		return(first_name)
+
+def get_uniformity(infile): # plugin_out/SARS_CoV_2_coverageAnalysis_out.xxx/*.bc_summary.xls
+	'''
+	Barcode ID      Sample Name     Mapped Reads    Filtered Reads  Target Reads    Mean Depth      Uniformity
+	IonXpress_001   001 FluB        6578122 0.32%   98.04%  28274   97.10%
+	IonXpress_003   002 FluB        635     0.00%   100.00% 4.5     49.97%
+	IonXpress_004   003 FluB        53592   0.15%   99.56%  332.6   73.31%
 
 	'''
 	with open(infile,'r') as cov_summary:
@@ -61,13 +79,13 @@ def get_cov_info(infile): # plugin_out/coverageAnalysis_out.xxx/*.bc_summary.xls
 			else:
 				vals = line.split('\t')
 				mapped_reads_n = vals[2]
-				on_target = vals[3]
+				on_target = vals[4]
 				mean_depth = vals[-2]
 				uni = vals[-1]
 
 	return([mapped_reads_n,on_target,mean_depth,uni])
 
-def amplicon_cov_info(infile):
+def reads_per_pool(infile):
 	p1_num = []
 	p2_num = []
 	
@@ -89,17 +107,44 @@ def amplicon_cov_info(infile):
 
 	return(avg_p1,avg_p2)
 
-def get_tvc_info(infile):
-
-
-def get_cons_info(infile):
-
-
-def get_pangolin_info(infile):
-
-
-
+def get_tvc_info(infile,barcode):
+	'''
+	variantCaller
+	SARS_CoV_2_coverageAnalysis
 	
+	/plugin_out/SARS_CoV_2_variantCaller_out.1733/results.json
+	'''
+	with open(infile,'r') as json_file:
+		json_str = json_load(json_file)
+		var_num = json_str['barcodes'][barcode]['variants']['variants']
+		return(var_num)
+
+def get_cons_info(infile,barcode):
+	'''
+	/plugin_out/generateConsensus_out.1782/results.json
+	
+	return value:
+		* 组装N比例
+		* 一致性序列变异位点个数
+		* 一致性序列杂合SNP个数 
+	'''
+	with open(infile,'r') as json_file:
+		json_str = json_load(json_file)
+		pct_N = json_str['barcodes'][barcode].get('Percent N','NA')
+		var_num = json_str['barcodes'][barcode].get('Variants','NA')
+		het_snp = json_str['barcodes'][barcode].get('Het snps','NA')
+		#het_indel = json_str['barcodes'][barcode]['Het indels']
+		return([pct_N,var_num,het_snp])
+
+def get_pangolin_info(infile,barcode):
+	'''
+	plugin_out/SARS_CoV_2_lineageID_out.1553/results.json
+	'''
+	with open(infile,'r') as json_file:
+		json_str = json_load(json_file)
+		Lineage = json_str['barcodes'][barcode].get('Lineage','NA')
+		return(Lineage)
+
 def main():
 	args = parse_args()
 	report_name = os.path.basename(args.report_dir)
