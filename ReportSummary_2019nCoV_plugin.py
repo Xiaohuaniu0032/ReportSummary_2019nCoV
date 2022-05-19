@@ -11,14 +11,28 @@ def parse_args():
 
 
 def get_bams(report_dir):
-	all_bams = glob.glob("%s/*_rawlib.bam")
+	all_bams = glob.glob("%s/*_rawlib.bam" % (report_dir)) # IonXpress_053_rawlib.bam
 	bams = []
 	for bam in all_bams:
 		name = os.path.basename(bam)
 		bams.append(bam)
 
-	bams_sort = sort(bams)
-	return(bams_sort)
+	return(sort(bams))
+
+def get_basic_info(infile):
+	'''
+	get below info from 'ion_params_00.json' file
+		* seq time
+		* expName
+		* chip type
+	'''
+	with open(infile,'r') as json_file:
+		json_str = json_load(json_file)
+		seq_date = json_str.get('date','NA')
+		expName = json_str.get('expName','NA')
+		chipType = json_str['exp_json'].get('chipType','NA')
+
+	return([seq_date,expName,chipType])
 
 def barcode_to_sampleName(infile): # ion_params_00.json
 	bc2name = {}
@@ -62,7 +76,7 @@ def get_first_run_plugin_result(report_dir,plugin_name):
 
 		first_xxx = xxx_int.sort()[0]
 		first_name = "%s_.%s" % (plugin_name,first_xxx)
-		return(first_name)
+		return(first_name) # SARS_CoV_2_coverageAnalysis_out.xxx
 
 def get_uniformity(infile): # plugin_out/SARS_CoV_2_coverageAnalysis_out.xxx/*.bc_summary.xls
 	'''
@@ -152,43 +166,51 @@ def main():
 	of = open(outfile,'w')
 	header = "\t".join("建库日期","测序日期","expName","报告名称","芯片类型","芯片总数据量","Barcode","样本名","Pangolin分型","Nextclade分型","样本数据量","均一性","组装N比例","TVC变异位点个数","一致性序列变异位点个数","一致性序列杂合SNP个数","Q20碱基百分比","Reads平均长度","比对Reads数","Ontarget率","平均测序深度","Pool1-Mean Reads per Amplicon","Pool2-Mean Reads per Amplicon","是否提交国家疾控","提交日期","备注")
 	of.write(header+'\n')
-	of.close()
-
-	# get libary date
-
-	# get sequencing date
-
-	# get expName
-
-	# get report name
-	report_name = os.path.basename(args.report_dir)
-
-	# get chip type
-
-	# get total reads number
-
-	############################## for each barcode ##############################
-	bams = get_bams(args.report_dir) # [IonXpress_003_rawlib.bam,]
-	ion_params_00_json = os.path.join(args.report_dir,'ion_params_00.json')
 	
+	ion_params_00_json = os.path.join(args.report_dir,'ion_params_00.json')
 	# check ion_params_00.json exists
 	if os.path.exists(ion_params_00_json):
 		print(ion_params_00_json)
 		continue
 	else:
 		sys.exit('[Error: can not find ion_params_00.json file, will exit]')
-	
-	all_barcodes = barcode_to_sampleName(ion_params_00_json)
 
+	# get libary date
+	chef_date = 'NA'
+
+	# get sequencing date / expName / chip type
+	basic_info = get_basic_info(ion_params_00_json)
+	seq_date = basic_info[0]
+	expName  = basic_info[1]
+	chipType = basic_info[2]
+
+	# get report name
+	report_name = os.path.basename(args.report_dir)
+
+	# get total reads number
+	total_reads = 'NA'
+
+	############################## for each barcode ##############################
+	#bams = get_bams(args.report_dir) # [IonXpress_003_rawlib.bam,...,]
+	all_barcodes = barcode_to_sampleName(ion_params_00_json)
 	for bc in all_barcodes:
 		# IonCode_0303
 		sample_name = all_barcodes[bc] # maybe None
 		
-		# check pangolin plugin
-		pangolin_result = ''
+		# pangolin result
+		pangolin_dir = get_first_run_plugin_result(args.report_dir,'SARS_CoV_2_lineageID')
+		if len(pangolin_dir) == 0:
+			# no SARS_CoV_2_lineageID plugin run
+			pangolin_result = 'NA'
+		else:
+			p_infile = "%s/%s/results.json" % (args.report_dir,pangolin_dir)
+			pangolin_result = get_pangolin_info(p_infile,bc)
 		
+		# nextclade result
 		nextclade_result = 'NA'
 
+		# 样本数据量
+		
 		aln_stat = "%s/%s_rawlib.ionstats_alignment.json" % (args.report_dir,bc)
 		
 		# 
