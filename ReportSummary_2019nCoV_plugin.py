@@ -160,12 +160,12 @@ def get_cons_info(infile,barcode):
   			"Chromosome": "2019-nCoV",
   			"Contig Length": "29753",
   			"Het indels": "5",
-      		"Het snps": "15",
-      		"Homo indels": "1",
-      		"Homo snps": "30",
-      		"Other": "4",
-      		"Percent N": "0.2185",
-			"Variants": "55"
+  			"Het snps": "15",
+  			"Homo indels": "1",
+  			"Homo snps": "30",
+  			"Other": "4",
+  			"Percent N": "0.2185",
+  			"Variants": "55"
 		}
 	}
 
