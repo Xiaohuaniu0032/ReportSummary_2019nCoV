@@ -50,11 +50,11 @@ def get_bc_reads_num(infile): # IonCode_0301_rawlib.ionstats_alignment.json
 		json_str = json_load(json_file)
 		reads_num = json_str['full']['num_reads']
 		mean_len  = json_str['full']['mean_read_length']
-		max_len   = json_str['full']['max_read_length']
+		#max_len   = json_str['full']['max_read_length']
 		#total_base_num = json_str['full']['num_bases']
 		#q20_base_num = ''
 
-	return([reads_num,mean_len,max_len])
+	return([reads_num,mean_len])
 
 def get_first_run_plugin_result(report_dir,plugin_name):
 	'''
@@ -78,7 +78,7 @@ def get_first_run_plugin_result(report_dir,plugin_name):
 		first_name = "%s_.%s" % (plugin_name,first_xxx)
 		return(first_name) # SARS_CoV_2_coverageAnalysis_out.xxx
 
-def get_uniformity(infile,barcode): # plugin_out/SARS_CoV_2_coverageAnalysis_out.xxx/*.bc_summary.xls
+def get_cov_stat(infile,barcode): # plugin_out/SARS_CoV_2_coverageAnalysis_out.xxx/*.bc_summary.xls
 	'''
 	Barcode ID      Sample Name     Mapped Reads    Filtered Reads  Target Reads    Mean Depth      Uniformity
 	IonXpress_001   001 FluB        6578122 0.32%   98.04%  28274   97.10%
@@ -101,6 +101,17 @@ def get_uniformity(infile,barcode): # plugin_out/SARS_CoV_2_coverageAnalysis_out
 	return([mapped_reads_n,on_target,mean_depth,uni])
 
 def reads_per_pool(infile):
+	'''
+	/plugin_out/SARS_CoV_2_coverageAnalysis_out.1723/IonXpress_001/*.amplicon.cov.xls
+
+	contig_id       contig_srt      contig_end      region_id       attributes      gc_count        overlaps        fwd_e2e rev_e2e total_reads     fwd_reads       rev_reads       cov20x  cov100x cov500x
+	2019-nCoV       3604    3824    r1_1.4.1477602  GENE_ID=r1;Pool=2       79      1494    0       0       0       0       0       209
+     209     172
+	2019-nCoV       4020    4239    r1_1.5.1289446  GENE_ID=r1;Pool=1       83      1859    0       0       0       0       0       187
+     187     90
+	2019-nCoV       6805    7017    r1_1.8.592180   GENE_ID=r1;Pool=2       64      918     0       0       0       0       0       189
+     175     27
+	'''
 	p1_num = []
 	p2_num = []
 	
@@ -120,7 +131,7 @@ def reads_per_pool(infile):
 	avg_p1 = float(mean(p1_num),2)
 	avg_p2 = float(mean(p2_num),2)
 
-	return(avg_p1,avg_p2)
+	return([avg_p1,avg_p2])
 
 def get_tvc_info(infile,barcode):
 	'''
@@ -233,25 +244,42 @@ def main():
 		# 样本数据量
 		aln_stat = "%s/%s_rawlib.ionstats_alignment.json" % (args.report_dir,bc)
 		if os.path.exists(aln_stat):
-			reads_num = get_bc_reads_num(aln_stat)
+			readsNum_meanLen = get_bc_reads_num(aln_stat)
 		else:
-			reads_num = 'NA'
+			readsNum_meanLen = ['NA','NA']
 		
-		# 均一性
+		reads_num = readsNum_meanLen[0]
+		
+		# 平均长度
+		read_mean_len = readsNum_meanLen[1]
+
+		# mapped_reads_n,on_target,mean_depth,uni [均一性]
 		cov_dir = get_first_run_plugin_result(args.report_dir,'SARS_CoV_2_coverageAnalysis')
 		if len(cov_dir) == 0:
 			# no SARS_CoV_2_coverageAnalysis plugin run
-			uniformity = 'NA'
+			cov_stat = ['NA','NA','NA','NA']
 		else:
 			cov_files = glob.glob("%s/%s/*.bc_summary.xls" % (args.report_dir,cov_dir))
 			if len(cov_files) == 1:
 				# exist one file
 				cov_file = cov_files[0]
-				uniformity = get_uniformity(cov_file,bc)
+				cov_stat = get_cov_stat(cov_file,bc)
 			else:
 				# do not exists OR has more than one *.bc_summary.xls file
-				uniformity = 'NA'
-		
+				cov_stat = ['NA','NA','NA','NA']
+
+		# 均一性
+		uniformity = cov_stat[3]
+
+		# 比对Reads数
+		mapped_reads_num = cov_stat[0]
+
+		# Ontarget率
+		on_target_pct = cov_stat[1]
+
+		# 平均测序深度
+		mean_depth = cov_stat[2]
+
 		# 一致性序列信息
 		cons_dir = get_first_run_plugin_result(args.report_dir,'generateConsensus')
 		if len(cons_dir) == 0:
@@ -271,22 +299,19 @@ def main():
 		cons_het_snp_num = cons_info[2]
 
 		# TVC变异位点个数
-		tvc_var_num = ''
-		
+		tvc_dir = get_first_run_plugin_result(args.report_dir,'SARS_CoV_2_variantCaller')
+		if len(tvc_dir) == 0:
+			# no SARS_CoV_2_variantCaller plugin run
+			tvc_var_num = 'NA'
+		else:
+			tvc_file = "%s/%s/results.json" % (args.report_dir,tvc_dir)
+			tvc_var_num = get_tvc_info(tvc_file,bc)
+
 		# Q20碱基百分比
-		q20_base_pct = ''
+		q20_base_pct = 'NA'
 
 		# Reads平均长度
-		read_mean_len = ''
-
-		# 比对Reads数
-		mapped_reads_num = ''
-
-		# Ontarget率
-		on_target_pct = ''
-
-		# 平均测序深度
-		mean_depth = ''
+		# pass
 
 		# Pool1-Mean Reads per Amplicon
 		reads_per_amp_p1 = ''
