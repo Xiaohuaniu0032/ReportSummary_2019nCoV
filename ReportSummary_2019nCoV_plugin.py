@@ -210,11 +210,55 @@ def main():
 		nextclade_result = 'NA'
 
 		# 样本数据量
-
 		aln_stat = "%s/%s_rawlib.ionstats_alignment.json" % (args.report_dir,bc)
+		if os.path.exists(aln_stat):
+			reads_num = get_bc_reads_num(aln_stat)
+		else:
+			reads_num = 'NA'
 		
-		# 
+		# 均一性
 		uniformity = get_uniformity()
-		cons_N_pct = 
-		pool1_avg_reads_per_amplicon = ''
-		pool2_avg_reads_per_amplicon = ''
+		
+		# 组装N比例
+		cons_N_pct = ''
+
+		# TVC变异位点个数
+		tvc_var_num = ''
+
+		# 一致性序列变异位点个数
+		cons_var_num = ''
+
+		# 一致性序列杂合SNP个数
+		cons_het_snp_num = ''
+
+		# Q20碱基百分比
+		q20_base_pct = ''
+
+		# Reads平均长度
+		read_mean_len = ''
+
+		# 比对Reads数
+		mapped_reads_num = ''
+
+		# Ontarget率
+		on_target_pct = ''
+
+		# 平均测序深度
+		mean_depth = ''
+
+		# Pool1-Mean Reads per Amplicon
+		reads_per_amp_p1 = ''
+
+		# Pool2-Mean Reads per Amplicon
+		reads_per_amp_p2 = ''
+		
+		# 是否提交
+		if_submit = 'NA'
+
+		# 提交日期
+		submit_date = 'NA'
+
+		# 备注
+		note = 'NA'
+		
+		val = "\t".join(chef_date,seq_date,expName,report_name,chipType,total_reads,bc,sample_name,pangolin_result,nextclade_result,reads_num,)
