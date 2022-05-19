@@ -164,7 +164,7 @@ def main():
 	report_name = os.path.basename(args.report_dir)
 	outfile = "%s/%s.summary.xls" % (args.outdir,report_name)
 	of = open(outfile,'w')
-	header = "\t".join("建库日期","测序日期","expName","报告名称","芯片类型","芯片总数据量","Barcode","样本名","Pangolin分型","Nextclade分型","样本数据量","均一性","组装N比例","TVC变异位点个数","一致性序列变异位点个数","一致性序列杂合SNP个数","Q20碱基百分比","Reads平均长度","比对Reads数","Ontarget率","平均测序深度","Pool1-Mean Reads per Amplicon","Pool2-Mean Reads per Amplicon","是否提交国家疾控","提交日期","备注")
+	header = "\t".join("建库日期","测序日期","expName","报告名称","芯片类型","芯片总数据量","Barcode","样本名","Pangolin分型","Nextclade分型","样本数据量","均一性","组装N比例","TVC变异位点个数","一致性序列变异位点个数","一致性序列杂合SNP个数","Q20碱基百分比","Reads平均长度","比对Reads数","Ontarget率","平均测序深度","Pool1-Mean Reads per Amplicon","Pool2-Mean Reads per Amplicon","是否提交","提交日期","备注")
 	of.write(header+'\n')
 	
 	ion_params_00_json = os.path.join(args.report_dir,'ion_params_00.json')
@@ -210,7 +210,7 @@ def main():
 		nextclade_result = 'NA'
 
 		# 样本数据量
-		
+
 		aln_stat = "%s/%s_rawlib.ionstats_alignment.json" % (args.report_dir,bc)
 		
 		# 
