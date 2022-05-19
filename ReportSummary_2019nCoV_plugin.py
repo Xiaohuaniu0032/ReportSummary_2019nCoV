@@ -78,7 +78,7 @@ def get_first_run_plugin_result(report_dir,plugin_name):
 		first_name = "%s_.%s" % (plugin_name,first_xxx)
 		return(first_name) # SARS_CoV_2_coverageAnalysis_out.xxx
 
-def get_uniformity(infile): # plugin_out/SARS_CoV_2_coverageAnalysis_out.xxx/*.bc_summary.xls
+def get_uniformity(infile,barcode): # plugin_out/SARS_CoV_2_coverageAnalysis_out.xxx/*.bc_summary.xls
 	'''
 	Barcode ID      Sample Name     Mapped Reads    Filtered Reads  Target Reads    Mean Depth      Uniformity
 	IonXpress_001   001 FluB        6578122 0.32%   98.04%  28274   97.10%
@@ -90,12 +90,13 @@ def get_uniformity(infile): # plugin_out/SARS_CoV_2_coverageAnalysis_out.xxx/*.b
 		for line in cov_summary.readline():
 			if line.startwith('Barcode ID'):
 				continue
-			else:
+			else: 
 				vals = line.split('\t')
-				mapped_reads_n = vals[2]
-				on_target = vals[4]
-				mean_depth = vals[-2]
-				uni = vals[-1]
+				if vals[0] == barcode: # this sample line
+					mapped_reads_n = vals[2]
+					on_target = vals[4]
+					mean_depth = vals[-2]
+					uni = vals[-1]
 
 	return([mapped_reads_n,on_target,mean_depth,uni])
 
@@ -137,6 +138,26 @@ def get_cons_info(infile,barcode):
 	'''
 	/plugin_out/generateConsensus_out.1782/results.json
 	
+	"Launch_Mode": "Manual",
+  	"Major_Allele_Only": "Yes",
+  	"Maximum_Percent_N": "1",
+  	"Minimum_Read_Depth": "20",
+  	"Minimum_Variant_Frequency": "0.5",
+  	"Minimum_Variant_Frequency_HPInDels": "0.6",
+  	"barcodes": {
+  		"IonXpress_001": {
+  			"Chromosome": "2019-nCoV",
+  			"Contig Length": "29753",
+  			"Het indels": "5",
+      		"Het snps": "15",
+      		"Homo indels": "1",
+      		"Homo snps": "30",
+      		"Other": "4",
+      		"Percent N": "0.2185",
+			"Variants": "55"
+		}
+	}
+
 	return value:
 		* 组装N比例
 		* 一致性序列变异位点个数
@@ -217,20 +238,41 @@ def main():
 			reads_num = 'NA'
 		
 		# 均一性
-		uniformity = get_uniformity()
+		cov_dir = get_first_run_plugin_result(args.report_dir,'SARS_CoV_2_coverageAnalysis')
+		if len(cov_dir) == 0:
+			# no SARS_CoV_2_coverageAnalysis plugin run
+			uniformity = 'NA'
+		else:
+			cov_files = glob.glob("%s/%s/*.bc_summary.xls" % (args.report_dir,cov_dir))
+			if len(cov_files) == 1:
+				# exist one file
+				cov_file = cov_files[0]
+				uniformity = get_uniformity(cov_file,bc)
+			else:
+				# do not exists OR has more than one *.bc_summary.xls file
+				uniformity = 'NA'
+		
+		# 一致性序列信息
+		cons_dir = get_first_run_plugin_result(args.report_dir,'generateConsensus')
+		if len(cons_dir) == 0:
+			# no generateConsensus plugin run
+			cons_info = ['NA','NA','NA']
+		else:
+			cons_file = "%s/%s/results.json" % (args.report_dir,cons_dir)
+			cons_info = get_cons_info(cons_file,bc)
 		
 		# 组装N比例
-		cons_N_pct = ''
+		cons_N_pct = cons_info[0]
+
+		# 一致性序列变异位点个数
+		cons_var_num = cons_info[1]
+
+		# 一致性序列杂合SNP个数
+		cons_het_snp_num = cons_info[2]
 
 		# TVC变异位点个数
 		tvc_var_num = ''
-
-		# 一致性序列变异位点个数
-		cons_var_num = ''
-
-		# 一致性序列杂合SNP个数
-		cons_het_snp_num = ''
-
+		
 		# Q20碱基百分比
 		q20_base_pct = ''
 
@@ -261,4 +303,11 @@ def main():
 		# 备注
 		note = 'NA'
 		
-		val = "\t".join(chef_date,seq_date,expName,report_name,chipType,total_reads,bc,sample_name,pangolin_result,nextclade_result,reads_num,)
+		val = "\t".join(chef_date,seq_date,expName,report_name,chipType,total_reads,bc,sample_name,pangolin_result,nextclade_result,reads_num,uniformity,cons_N_pct,tvc_var_num,cons_var_num,cons_het_snp_num,q20_base_pct,read_mean_len,mapped_reads_num,on_target_pct,mean_depth,reads_per_amp_p1,reads_per_amp_p2,if_submit,submit_date,note)
+		of.write(val+'\n')
+
+	of.close()
+
+
+if __name__ == '__main__':
+	main()
