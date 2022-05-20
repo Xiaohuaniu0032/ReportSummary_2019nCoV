@@ -95,6 +95,7 @@ def get_cov_stat(infile,barcode): # plugin_out/SARS_CoV_2_coverageAnalysis_out.x
 	IonXpress_004   003 FluB        53592   0.15%   99.56%  332.6   73.31%
 
 	'''
+	
 	#print("args are: %s %s" % (infile,barcode))
 	if_this_sample_exists = 0
 	return_val = []
@@ -171,10 +172,18 @@ def get_tvc_info(infile,barcode):
 	
 	/plugin_out/SARS_CoV_2_variantCaller_out.1733/results.json
 	'''
+	
 	with open(infile,'r') as json_file:
 		json_str = json.load(json_file)
-		var_num = json_str['barcodes'][barcode]['variants']['variants']
-		return(var_num)
+		all_bc = json_str['barcodes'].keys()
+		print("all bc are: %s" % (all_bc))
+		if barcode in all_bc:
+			var_num = json_str['barcodes'][barcode]['variants']['variants']
+			return(var_num)
+		else:
+			# do not contain this barcode in results.json
+			var_num = 'NA'
+			return(var_num)
 
 def get_cons_info(infile,barcode):
 	'''
@@ -207,11 +216,16 @@ def get_cons_info(infile,barcode):
 	'''
 	with open(infile,'r') as json_file:
 		json_str = json.load(json_file)
-		pct_N = json_str['barcodes'][barcode].get('Percent N','NA')
-		var_num = json_str['barcodes'][barcode].get('Variants','NA')
-		het_snp = json_str['barcodes'][barcode].get('Het snps','NA')
+		all_bc = json_str['barcodes'].keys()
+		# check if barcode in all_bc
+		if barcode in all_bc:
+			pct_N = json_str['barcodes'][barcode].get('Percent N','NA')
+			var_num = json_str['barcodes'][barcode].get('Variants','NA')
+			het_snp = json_str['barcodes'][barcode].get('Het snps','NA')
 		#het_indel = json_str['barcodes'][barcode]['Het indels']
-		return([pct_N,var_num,het_snp])
+			return([pct_N,var_num,het_snp])
+		else:
+			return(['NA','NA','NA'])
 
 def get_pangolin_info(infile,barcode):
 	'''
@@ -219,8 +233,12 @@ def get_pangolin_info(infile,barcode):
 	'''
 	with open(infile,'r') as json_file:
 		json_str = json.load(json_file)
-		Lineage = json_str['barcodes'][barcode].get('Lineage','NA')
-		return(Lineage)
+		all_bc = json_str['barcodes'].keys()
+		if barcode in all_bc:
+			Lineage = json_str['barcodes'][barcode].get('Lineage','NA')
+			return(Lineage)
+		else:
+			return('NA')
 
 def main():
 	args = parse_args()
@@ -257,8 +275,17 @@ def main():
 	############################## for each barcode ##############################
 	#bams = get_bams(args.report_dir) # [IonXpress_003_rawlib.bam,...,]
 	all_barcodes = barcode_to_sampleName(ion_params_00_json)
-	for bc in all_barcodes:
-		print("stat %s..." % bc)
+	
+	# first print all barcode and its name
+	print("########## sample info is ##########")
+	print("Barcode\tSampleName")
+	for bc in sorted(all_barcodes.keys()):
+		sample_name = all_barcodes[bc]
+		print("%s\t%s" % (bc,sample_name))
+	print('\n')
+
+	for bc in sorted(all_barcodes.keys()):
+		print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>stat %s..." % bc)
 		# IonCode_0303
 		sample_name = all_barcodes[bc] # maybe None
 		
