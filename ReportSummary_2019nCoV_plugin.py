@@ -196,7 +196,7 @@ def main():
 	report_name = os.path.basename(args.report_dir)
 	outfile = "%s/%s.summary.xls" % (args.outdir,report_name)
 	of = open(outfile,'w')
-	header = "\t".join("建库日期","测序日期","expName","报告名称","芯片类型","芯片总数据量","Barcode","样本名","Pangolin分型","Nextclade分型","样本数据量","均一性","组装N比例","TVC变异位点个数","一致性序列变异位点个数","一致性序列杂合SNP个数","Q20碱基百分比","Reads平均长度","比对Reads数","Ontarget率","平均测序深度","Pool1-Mean Reads per Amplicon","Pool2-Mean Reads per Amplicon","是否提交","提交日期","备注")
+	header = "\t".join("建库日期","测序日期","expName","报告名称","芯片类型","芯片总数据量","Barcode","样本名","Pangolin分型","Nextclade分型","样本数据量","均一性","组装N比例","TVC变异位点个数","一致性序列变异位点个数","一致性序列杂合SNP个数","Reads平均长度","平均测序深度","Pool1-Mean Reads per Amplicon","Pool2-Mean Reads per Amplicon","是否提交","提交日期","备注")
 	of.write(header+'\n')
 	
 	ion_params_00_json = os.path.join(args.report_dir,'ion_params_00.json')
@@ -226,26 +226,34 @@ def main():
 	#bams = get_bams(args.report_dir) # [IonXpress_003_rawlib.bam,...,]
 	all_barcodes = barcode_to_sampleName(ion_params_00_json)
 	for bc in all_barcodes:
+		print("stat %s..." % bc)
 		# IonCode_0303
 		sample_name = all_barcodes[bc] # maybe None
 		
 		# pangolin result
+		print("check SARS_CoV_2_lineageID plugin results")
 		pangolin_dir = get_first_run_plugin_result(args.report_dir,'SARS_CoV_2_lineageID')
 		if len(pangolin_dir) == 0:
 			# no SARS_CoV_2_lineageID plugin run
+			print("no SARS_CoV_2_lineageID plugin run")
 			pangolin_result = 'NA'
 		else:
-			p_infile = "%s/%s/results.json" % (args.report_dir,pangolin_dir)
+			print("using %s result" % (pangolin_dir))
+			p_infile = "%s/plugin_out/%s/results.json" % (args.report_dir,pangolin_dir)
 			pangolin_result = get_pangolin_info(p_infile,bc)
 		
 		# nextclade result
+		print("check Nextclade_2019nCoV plugin results")
+		print("skip Nextclade results")
 		nextclade_result = 'NA'
 
 		# 样本数据量
+		print("check sample reads num  and mean_len info")
 		aln_stat = "%s/%s_rawlib.ionstats_alignment.json" % (args.report_dir,bc)
 		if os.path.exists(aln_stat):
 			readsNum_meanLen = get_bc_reads_num(aln_stat)
 		else:
+			print("[Warning: can not find %s file" % (aln_stat))
 			readsNum_meanLen = ['NA','NA']
 		
 		reads_num = readsNum_meanLen[0]
@@ -253,13 +261,14 @@ def main():
 		# 平均长度
 		read_mean_len = readsNum_meanLen[1]
 
-		# mapped_reads_n,on_target,mean_depth,uni [均一性]
+		print("check mean_depth and uniformity info")
+		# mean_depth,uni [均一性]
 		cov_dir = get_first_run_plugin_result(args.report_dir,'SARS_CoV_2_coverageAnalysis')
 		if len(cov_dir) == 0:
 			# no SARS_CoV_2_coverageAnalysis plugin run
 			cov_stat = ['NA','NA','NA','NA']
 		else:
-			cov_files = glob.glob("%s/%s/*.bc_summary.xls" % (args.report_dir,cov_dir))
+			cov_files = glob.glob("%s/plugin_out/%s/*.bc_summary.xls" % (args.report_dir,cov_dir))
 			if len(cov_files) == 1:
 				# exist one file
 				cov_file = cov_files[0]
@@ -272,21 +281,23 @@ def main():
 		uniformity = cov_stat[3]
 
 		# 比对Reads数
-		mapped_reads_num = cov_stat[0]
+		#mapped_reads_num = cov_stat[0]
 
 		# Ontarget率
-		on_target_pct = cov_stat[1]
+		#on_target_pct = cov_stat[1]
 
 		# 平均测序深度
 		mean_depth = cov_stat[2]
 
+		print("check generateConsensus plugin results")
 		# 一致性序列信息
 		cons_dir = get_first_run_plugin_result(args.report_dir,'generateConsensus')
 		if len(cons_dir) == 0:
 			# no generateConsensus plugin run
+			print("no generateConsensus plugin run")
 			cons_info = ['NA','NA','NA']
 		else:
-			cons_file = "%s/%s/results.json" % (args.report_dir,cons_dir)
+			cons_file = "%s/plugin_out/%s/results.json" % (args.report_dir,cons_dir)
 			cons_info = get_cons_info(cons_file,bc)
 		
 		# 组装N比例
@@ -298,26 +309,44 @@ def main():
 		# 一致性序列杂合SNP个数
 		cons_het_snp_num = cons_info[2]
 
+		print("check SARS_CoV_2_variantCaller plugin results")
 		# TVC变异位点个数
 		tvc_dir = get_first_run_plugin_result(args.report_dir,'SARS_CoV_2_variantCaller')
 		if len(tvc_dir) == 0:
 			# no SARS_CoV_2_variantCaller plugin run
+			print("no SARS_CoV_2_variantCaller plugin run")
 			tvc_var_num = 'NA'
 		else:
-			tvc_file = "%s/%s/results.json" % (args.report_dir,tvc_dir)
+			tvc_file = "%s/plugin_out/%s/results.json" % (args.report_dir,tvc_dir)
 			tvc_var_num = get_tvc_info(tvc_file,bc)
 
 		# Q20碱基百分比
-		q20_base_pct = 'NA'
+		#q20_base_pct = 'NA'
 
 		# Reads平均长度
 		# pass
 
+		print("check avg reads num per pool info")
+		# reads_per_pool
+		cov_dir = get_first_run_plugin_result(args.report_dir,'SARS_CoV_2_coverageAnalysis')
+		if len(cov_dir) == 0:
+			# no SARS_CoV_2_coverageAnalysis plugin run
+			avg_reads_pool = ['NA','NA']
+		else:
+			amplicon_cov_file = glob.glob("%s/plugin_out/%s/*.amplicon.cov.xls" % (args.report_dir,cov_dir,bc))
+			if len(amplicon_cov_file) == 1:
+				# exist one file
+				cov_file = cov_files[0]
+				avg_reads_pool = reads_per_pool(cov_file)
+			else:
+				# do not exists OR has more than one *.bc_summary.xls file
+				avg_reads_pool = ['NA','NA']
+
 		# Pool1-Mean Reads per Amplicon
-		reads_per_amp_p1 = ''
+		reads_per_amp_p1 = avg_reads_pool[0]
 
 		# Pool2-Mean Reads per Amplicon
-		reads_per_amp_p2 = ''
+		reads_per_amp_p2 = avg_reads_pool[1]
 		
 		# 是否提交
 		if_submit = 'NA'
@@ -328,9 +357,8 @@ def main():
 		# 备注
 		note = 'NA'
 		
-		val = "\t".join(chef_date,seq_date,expName,report_name,chipType,total_reads,bc,sample_name,pangolin_result,nextclade_result,reads_num,uniformity,cons_N_pct,tvc_var_num,cons_var_num,cons_het_snp_num,q20_base_pct,read_mean_len,mapped_reads_num,on_target_pct,mean_depth,reads_per_amp_p1,reads_per_amp_p2,if_submit,submit_date,note)
+		val = "\t".join(chef_date,seq_date,expName,report_name,chipType,total_reads,bc,sample_name,pangolin_result,nextclade_result,reads_num,uniformity,cons_N_pct,tvc_var_num,cons_var_num,cons_het_snp_num,read_mean_len,mean_depth,reads_per_amp_p1,reads_per_amp_p2,if_submit,submit_date,note)
 		of.write(val+'\n')
-
 	of.close()
 
 
