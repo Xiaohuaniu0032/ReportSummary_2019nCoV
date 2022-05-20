@@ -35,7 +35,7 @@ class ReportSummary_2019nCoV(IonPlugin):
     abs_path = os.path.abspath(__file__)
     this_dir = os.path.dirname(abs_path)
     
-    cmd = "perl %s/ReportSummary_2019nCoV_plugin.pl %s %s" % (this_dir,report_dir,plugin_result_dir)
+    cmd = "python %s/ReportSummary_2019nCoV_plugin.py %s %s" % (this_dir,report_dir,plugin_result_dir)
     print "cmd is: %s" % (cmd)
     os.system(cmd)
 
