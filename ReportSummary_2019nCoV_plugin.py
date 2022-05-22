@@ -5,6 +5,8 @@ import argparse
 import re
 import json
 import glob
+import io
+import codecs
 
 def parse_args():
 	AP = argparse.ArgumentParser("Collect 2019nCoV info")
@@ -76,10 +78,16 @@ def get_first_run_plugin_result(report_dir,plugin_name):
 	else:
 		xxx_int = []
 		for file in start_json_list:
-			plugin_full_path = os.path.dirname(file)
-			plugin_basename = os.path.basename(plugin_full_path)
-			xxx = int(plugin_basename.split('.')[1])
-			xxx_int.append(xxx)
+			plugin_full_path = os.path.dirname(file) # /results/analysis/output/Home/Auto_xxx/plugin_out/vcMerge_out.1759
+			plugin_basename = os.path.basename(plugin_full_path) # vcMerge_out.1759
+			xxx = plugin_basename.split('.')[1]
+			# SARS_CoV_2_variantCaller_out.qinghaiCDC.20220403
+			# this dir is for test purpose, and its name is not correct (just for manually test)
+			# need to skip this dir
+			if xxx[0].isdigit():
+				xxx_int.append(xxx)
+			else:
+				continue
 
 		xxx_int.sort()
 		print(xxx_int)
@@ -244,9 +252,22 @@ def main():
 	args = parse_args()
 	report_name = os.path.basename(args.report_dir)
 	outfile = "%s/%s.summary.xls" % (args.outdir,report_name)
-	of = open(outfile,'w')
-	header = "\t".join(["建库日期","测序日期","expName","报告名称","芯片类型","芯片总数据量","Barcode","样本名","Pangolin分型","Nextclade分型","样本数据量","均一性","组装N比例","TVC变异位点个数","一致性序列变异位点个数","一致性序列杂合SNP个数","Reads平均长度","平均测序深度","Pool1-Mean Reads per Amplicon","Pool2-Mean Reads per Amplicon","是否提交","提交日期","备注"])
-	of.write(header+'\n')
+	of = io.open(outfile,'w',encoding='utf-8')
+	#header = "\t".join(["建库日期","测序日期","expName","报告名称","芯片类型","Barcode","样本名","Pangolin分型","Nextclade分型","样本数据量","均一性","组装N比例","TVC变异位点个数","一致性序列变异位点个数","一致性序列杂合SNP个数","Reads平均长度","平均测序深度","Pool1-Mean Reads per Amplicon","Pool2-Mean Reads per Amplicon","是否提交","提交日期","备注"])
+	header = "\t".join(['chefDate','seqDate','expName','reportName','chipType','Barcode','sampleName','Pangolin','Nextclade','totalReads','Uniformity','consensusN','tvcVarNum','consVarNum','consHetSnpNum','readMeanLength','meanDepth','Pool1-Mean Reads per Amplicon','Pool2-Mean Reads per Amplicon','ifSubmit','submitDate','Note'])
+	#of.write(codecs.BOM_UTF8)
+	of.write(header.decode('utf-8')+'\n')
+	
+	plugin_info = {}
+	# make a log file, this file will record which plugin's result was used by this plugin
+	'''
+	SARS_CoV_2_coverageAnalysis	SARS_CoV_2_coverageAnalysis_out.1212
+	SARS_CoV_2_variantCaller	SARS_CoV_2_variantCaller_out.1567
+	generateConsensus		generateConsensus_out.1532		
+	SARS_CoV_2_lineageID		SARS_CoV_2_lineageID_out.1553
+	'''
+	plugin_log = "%s/plugin.log" % (args.outdir)
+	of_plugin = open(plugin_log,'w')
 	
 	ion_params_00_json = os.path.join(args.report_dir,'ion_params_00.json')
 	# check ion_params_00.json exists
@@ -296,10 +317,20 @@ def main():
 			# no SARS_CoV_2_lineageID plugin run
 			print("no SARS_CoV_2_lineageID plugin run")
 			pangolin_result = 'NA'
+			plugin_info['SARS_CoV_2_lineageID'] = 'NA'
+			#of_plugin.write("SARS_CoV_2_lineageID = %s" % ('NA'))
 		else:
 			print("using %s result" % (pangolin_dir))
 			p_infile = "%s/plugin_out/%s/results.json" % (args.report_dir,pangolin_dir)
-			pangolin_result = get_pangolin_info(p_infile,bc)
+			# if plugin executed but failed, then you will not find results.json
+			if os.path.exists(p_infile):
+				pangolin_result = get_pangolin_info(p_infile,bc)
+				plugin_info['SARS_CoV_2_lineageID'] = pangolin_dir
+				#of_plugin.write("SARS_CoV_2_lineageID = %s" % (pangolin_dir))
+			else:
+				pangolin_result = 'NA'
+				print("[Warning]:can not find SARS_CoV_2_lineageID results.json file, will skipped")
+				plugin_info['SARS_CoV_2_lineageID'] = 'NA'
 		print(pangolin_result)
 		print('\n')
 
@@ -333,6 +364,8 @@ def main():
 		if len(cov_dir) == 0:
 			# no SARS_CoV_2_coverageAnalysis plugin run
 			cov_stat = ['NA','NA','NA','NA']
+			plugin_info['SARS_CoV_2_coverageAnalysis'] = 'NA'
+			#of_plugin.write("SARS_CoV_2_coverageAnalysis = %s" % ('NA'))
 		else:
 			print("using %s results" % (cov_dir))
 			cov_files = glob.glob("%s/plugin_out/%s/*.bc_summary.xls" % (args.report_dir,cov_dir))
@@ -341,9 +374,13 @@ def main():
 				cov_file = cov_files[0]
 				print(cov_file)
 				cov_stat = get_cov_stat(cov_file,bc)
+				plugin_info['SARS_CoV_2_coverageAnalysis'] = cov_dir
+				#of_plugin.write("SARS_CoV_2_coverageAnalysis = %s" % (cov_dir))
 			else:
 				# do not exists OR has more than one *.bc_summary.xls file
 				cov_stat = ['NA','NA','NA']
+				plugin_info['SARS_CoV_2_coverageAnalysis'] = 'NA'
+				#of_plugin.write("SARS_CoV_2_coverageAnalysis = %s" % ('NA'))
 
 		#print(cov_stat)
 		# 均一性
@@ -369,11 +406,21 @@ def main():
 			# no generateConsensus plugin run
 			print("no generateConsensus plugin run")
 			cons_info = ['NA','NA','NA']
+			plugin_info['generateConsensus'] = 'NA'
+			#of_plugin.write("generateConsensus = %s" % ('NA'))
 		else:
 			print("using %s results" % (cons_dir))
 			cons_file = "%s/plugin_out/%s/results.json" % (args.report_dir,cons_dir)
 			print(cons_file)
-			cons_info = get_cons_info(cons_file,bc)
+			if os.path.exists(cons_file):
+				cons_info = get_cons_info(cons_file,bc)
+				plugin_info['generateConsensus'] = cons_dir
+				#of_plugin.write("generateConsensus = %s" % (cons_dir))
+			else:
+				cons_info = ['NA','NA','NA']
+				print("[Warnings: can not find generateConsensus results.json file, will skip")
+				plugin_info['generateConsensus'] = 'NA'
+				#of_plugin.write("generateConsensus = %s" % ('NA'))
 		
 		# 组装N比例
 		cons_N_pct = cons_info[0]
@@ -397,11 +444,21 @@ def main():
 			# no SARS_CoV_2_variantCaller plugin run
 			print("no SARS_CoV_2_variantCaller plugin run")
 			tvc_var_num = 'NA'
+			plugin_info['SARS_CoV_2_variantCaller'] = 'NA'
+			#of_plugin.write("SARS_CoV_2_variantCaller = %s" % ('NA'))
 		else:
 			print("using %s results" % (tvc_dir))
 			tvc_file = "%s/plugin_out/%s/results.json" % (args.report_dir,tvc_dir)
 			print(tvc_file)
-			tvc_var_num = get_tvc_info(tvc_file,bc)
+			if os.path.exists(tvc_file):
+				tvc_var_num = get_tvc_info(tvc_file,bc)
+				plugin_info['SARS_CoV_2_variantCaller'] = tvc_dir
+				#of_plugin.write("SARS_CoV_2_variantCaller = %s" % (tvc_dir))
+			else:
+				tvc_var_num = 'NA'
+				print("[Warning]: can not find SARS_CoV_2_variantCaller results.json file, will skip")
+				plugin_info['SARS_CoV_2_variantCaller'] = 'NA'
+				#of_plugin.write("SARS_CoV_2_variantCaller = %s" % ('NA'))
 		
 		print("tvc num is: %s" % (tvc_var_num))
 		print("\n")
@@ -448,10 +505,21 @@ def main():
 		# 备注
 		note = 'NA'
 			
-		h = (str(chef_date),str(seq_date),expName,report_name,str(chipType),str(total_reads),bc,sample_name,pangolin_result,nextclade_result,str(reads_num),str(uniformity),str(cons_N_pct),str(tvc_var_num),str(cons_var_num),str(cons_het_snp_num),str(read_mean_len),str(mean_depth),str(reads_per_amp_p1),str(reads_per_amp_p2),if_submit,submit_date,note)
+		h = (str(chef_date),str(seq_date),expName,report_name,str(chipType),bc,sample_name,pangolin_result,nextclade_result,str(reads_num),str(uniformity),str(cons_N_pct),str(tvc_var_num),str(cons_var_num),str(cons_het_snp_num),str(read_mean_len),str(mean_depth),str(reads_per_amp_p1),str(reads_per_amp_p2),if_submit,submit_date,note)
 		val = "\t".join(h)
-		of.write(val+'\n')
+		of.write(val.decode('utf-8')+'\n')
 	of.close()
+	
+	plugin_list = ['SARS_CoV_2_coverageAnalysis','SARS_CoV_2_variantCaller','generateConsensus','SARS_CoV_2_lineageID']
+	SARS_CoV_2_coverageAnalysis = plugin_info.get('SARS_CoV_2_coverageAnalysis','NA')
+	SARS_CoV_2_variantCaller    = plugin_info.get('SARS_CoV_2_variantCaller','NA')
+	generateConsensus           = plugin_info.get('generateConsensus','NA')
+	SARS_CoV_2_lineageID        = plugin_info.get('SARS_CoV_2_lineageID','NA')
+	of_plugin.write(SARS_CoV_2_coverageAnalysis+'\n')
+	of_plugin.write(SARS_CoV_2_variantCaller+'\n')
+	of_plugin.write(generateConsensus+'\n')
+	of_plugin.write(SARS_CoV_2_lineageID+'\n')
+	of_plugin.close()
 
 
 if __name__ == '__main__':

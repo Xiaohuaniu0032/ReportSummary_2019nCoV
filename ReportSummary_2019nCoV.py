@@ -43,7 +43,19 @@ class ReportSummary_2019nCoV(IonPlugin):
     file_path = "%s/plugin_out/%s" % (url_root,os.path.basename(plugin_result_dir))
     print(file_path)
 
-    with open("ReportSummary_2019nCoV.html","w") as f:
+    with open("ReportSummary_2019nCoV_block.html","w") as f:
+      # first print which plugin was used
+      plugin_log = "%s/plugin.log" % (plugin_result_dir)
+      print(plugin_log)
+      of_p = open(plugin_log,'r')
+      lines = of_p.readlines()
+      f.write("<html><body>\n")
+      f.write("<ul>\n")
+      for line in lines:
+        v = '  <li style="color:Olive">%s</li>' % (line.rstrip())
+        f.write(v+'\n')
+      f.write("</ul>\n")
+         
       for file in glob.glob('*.summary.xls'):
         print(file)
         f.write('<a href="%s">%s</a><br>\n'
