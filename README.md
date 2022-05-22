@@ -1,4 +1,4 @@
-## Summary Ion AmpliSeq SARS-CoV-2 Insight Research results into one xls file.
+## Summary `Ion AmpliSeq SARS-CoV-2 Insight Research` results into one xls file.
 
 ## Output file header line
 	建库日期 : chefDate
