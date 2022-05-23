@@ -108,12 +108,15 @@ def get_cov_stat(infile,barcode): # plugin_out/SARS_CoV_2_coverageAnalysis_out.x
 	if_this_sample_exists = 0
 	return_val = []
 	with open(infile,'r') as cov_summary:
-		for line in cov_summary.readline():
+		for line in cov_summary:
+			#print(line)
 			if line.startswith('Barcode ID'):
 				continue
 			else: 
 				vals = line.split('\t')
+				#print(vals[0])
 				if vals[0] == barcode: # this sample line
+					print(line)
 					if_this_sample_exists = 1
 					mapped_reads_n = vals[2]
 					on_target = vals[4]
@@ -323,6 +326,7 @@ def main():
 			print("using %s result" % (pangolin_dir))
 			p_infile = "%s/plugin_out/%s/results.json" % (args.report_dir,pangolin_dir)
 			# if plugin executed but failed, then you will not find results.json
+			print(p_infile)
 			if os.path.exists(p_infile):
 				pangolin_result = get_pangolin_info(p_infile,bc)
 				plugin_info['SARS_CoV_2_lineageID'] = pangolin_dir
@@ -331,7 +335,7 @@ def main():
 				pangolin_result = 'NA'
 				print("[Warning]:can not find SARS_CoV_2_lineageID results.json file, will skipped")
 				plugin_info['SARS_CoV_2_lineageID'] = 'NA'
-		print(pangolin_result)
+		print("pangolin result is: %s" % (pangolin_result))
 		print('\n')
 
 		# nextclade result
