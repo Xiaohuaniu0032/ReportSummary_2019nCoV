@@ -113,7 +113,7 @@ def get_cov_stat(infile,barcode): # plugin_out/SARS_CoV_2_coverageAnalysis_out.x
 			if line.startswith('Barcode ID'):
 				continue
 			else: 
-				vals = line.split('\t')
+				vals = line.rstrip().split('\t')
 				#print(vals[0])
 				if vals[0] == barcode: # this sample line
 					print(line)
