@@ -45,7 +45,7 @@ def get_loading_info(infile):
 		bead = int(json_str['fields'].get('bead')) # 34183815
 		
 		if bead != 0:
-			enrichment = float(live/bead)
+			enrichment = round(float(live)/bead,2)
 		else:
 			enrichment = 'NA'
 
@@ -66,11 +66,23 @@ def get_filter_info(infile):
 	'''
 	with open(infile,'r') as json_file:
 		json_str = json.load(json_file)
-		poly         = json_str['Filtering']['LibraryReport'].get('filtered_polyclonal','NA') # 9284994
-		primer_dimer = json_str['Filtering']['LibraryReport'].get('filtered_primer_dimer','NA') # 15865
-		low_qual     = json_str['Filtering']['LibraryReport'].get('filtered_low_quality','NA') # 3797720
+		poly         = json_str['Filtering']['LibraryReport'].get('filtered_polyclonal') # 9284994
+		primer_dimer = json_str['Filtering']['LibraryReport'].get('filtered_primer_dimer') # 15865
+		low_qual     = json_str['Filtering']['LibraryReport'].get('filtered_low_quality') # 3797720
+		final_reads  = json_str['Filtering']['LibraryReport'].get('final_library_reads') # 20815954
 
-	return([poly,primer_dimer,low_qual])
+	lib_live_isp = poly + primer_dimer + low_qual +final_reads # 33914533
+
+	if lib_live_isp != 0:
+		poly_pct    = round(poly/float(lib_live_isp) * 100,1) # 27.4%
+		dimer_pct   = round(primer_dimer/float(lib_live_isp) * 100,1)
+		lowQual_pct = round(low_qual/float(lib_live_isp) * 100,1)
+	else:
+		poly_pct = 'NA'
+		dimer_pct = 'NA'
+		lowQual_pct = 'NA'
+	
+	return([poly_pct,primer_dimer,low_qual])
 
 def get_analysis_date(infile):
 	# expMeta.dat
@@ -331,7 +343,7 @@ def main():
 	outfile = "%s/%s.summary.xls" % (args.outdir,report_name)
 	of = io.open(outfile,'w',encoding='utf-8')
 	#header = "\t".join(["建库日期","测序日期","expName","报告名称","芯片类型","Barcode","样本名","Pangolin分型","Nextclade分型","样本数据量","均一性","组装N比例","TVC变异位点个数","一致性序列变异位点个数","一致性序列杂合SNP个数","Reads平均长度","平均测序深度","Pool1-Mean Reads per Amplicon","Pool2-Mean Reads per Amplicon","是否提交","提交日期","备注"])
-	header = "\t".join(['seqDate','expName','reportName','chipType','Barcode','sampleName','Pangolin','Nextclade','totalReads (0.5~1M)','Uniformity','consensusN (<1)','tvcVarNum','consVarNum','consHetSnpNum','readMeanLength (>200bp)','meanDepth','Pool1-Mean Reads per Amplicon','Pool2-Mean Reads per Amplicon','P1/P2_Ratio','Loading','Enrichment','Polyclonal','Low Quality','Adapter Dimer','ifSubmit','submitDate','Note'])
+	header = "\t".join(['seqDate','expName','reportName','chipType','Barcode','sampleName','Pangolin','Nextclade','totalReads (0.5~1M)','Uniformity','consensusN (<1)','tvcVarNum','consVarNum','consHetSnpNum','readMeanLength (>200bp)','meanDepth','Pool1-Mean Reads per Amplicon','Pool2-Mean Reads per Amplicon','P1/P2_Ratio','Loading','Enrichment','Polyclonal','Low Quality','Primer Dimer','ifSubmit','submitDate','Note'])
 	#of.write(codecs.BOM_UTF8)
 	of.write(header.decode('utf-8')+'\n')
 	
@@ -581,7 +593,33 @@ def main():
 		print("reads_per_amp_p2 is: %s" % (reads_per_amp_p2))
 		print("reads_per_amp_p1 / reads_per_amp_p2 is: %s" % (p1_vs_p2))
 
+		# loading file
+		print("check loading info...")
+		loading_files = glob.glob("%s/serialized_*.json" % (args.report_dir))
+		if len(loading_files) > 0:
+			loading_file = loading_files[0]
+			load_info = get_loading_info(loading_file)
+		else:
+			# no serialized_*.json file
+			load_info = ['NA','NA','NA']
 		
+		loading = load_info[1]
+		enrichment = load_info[2]
+
+		print("check polyclonal/low_qual/primer_dimer info...")
+		qc_file = "%s/basecaller_results/BaseCaller.json" % (args.report_dir)
+		# check if exists
+		if os.path.exists(qc_file):
+			qc_info = get_filter_info(qc_file)
+		else:
+			qc_info = ['NA','NA','NA']
+
+		polyclonal = qc_info[0]
+		primer_dimer = qc_info[]
+		low_qual = qc_info[]
+
+		primer_dimer = ''
+
 		print("\n\n\n")
 		# 是否提交
 		if_submit = 'NA'
