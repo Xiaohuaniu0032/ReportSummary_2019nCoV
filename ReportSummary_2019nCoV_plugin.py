@@ -24,6 +24,80 @@ def get_bams(report_dir):
 
 	return(sort(bams))
 
+def get_loading_info(infile):
+	'''
+	usable reads
+	loading rate
+	enrichment
+
+	/Auto_xxx/serialized_Auto_user_GSS5PR-0070-144-ludaopei-530chip2_502.json
+	'''
+
+	with open(infile,'r') as json_file:
+		json_str = json.load(json_file)
+		addressable = json_str['fields'].get('adjusted_addressable','NA')
+		final_usable_reads = json_str['fields'].get('libFinal','NA')
+		
+		load_rate = json_str['fields'].get('loading','NA') # bead / adjusted_addressable
+		
+		# enrichment = live / bead
+		live = int(json_str['fields'].get('live')) # 34182286
+		bead = int(json_str['fields'].get('bead')) # 34183815
+		
+		if bead != 0:
+			enrichment = float(live/bead)
+		else:
+			enrichment = 'NA'
+
+		# live = lib_live + tf_live
+		lib_live = json_str['fields'].get('lib') # 33914533
+		tf_live  = json_str['fields'].get('tf')  # 267753
+
+	return([final_usable_reads,load_rate,enrichment])
+
+def get_filter_info(infile):
+	'''
+	/Auto_xxx/basecaller_results/BaseCaller.json
+	
+	return values:
+		poly clonal
+		primer dimer
+		low quality
+	'''
+	with open(infile,'r') as json_file:
+		json_str = json.load(json_file)
+		poly         = json_str['Filtering']['LibraryReport'].get('filtered_polyclonal','NA') # 9284994
+		primer_dimer = json_str['Filtering']['LibraryReport'].get('filtered_primer_dimer','NA') # 15865
+		low_qual     = json_str['Filtering']['LibraryReport'].get('filtered_low_quality','NA') # 3797720
+
+	return([poly,primer_dimer,low_qual])
+
+def get_analysis_date(infile):
+	# expMeta.dat
+	'''
+	Run Name = R_2022_03_10_17_29_05_user_GSS5PR-0070-144-ludaopei-530chip2
+	Run Date = 2022-03-10 09:33:46+00:00
+	Run Flows = 800
+	...
+	Instrument = GSS5PR-0070
+	Flow Order = TACGTACGTCTGAGCATCGATCGATGTACAGC
+	Analysis Date = 2022-03-10
+	Analysis Flows = 0
+	runID = D2100
+	'''
+	exp_info = {}
+	with open(infile,'r') as exp_mata:
+		for line in exp_mata:
+			vals = line.strip().split('=')
+			k = vals[0].strip()
+			v = vals[1].strip()
+			exp_info[k] = v
+
+	seq_date = exp_info.get('Analysis Date','NA')
+	return(seq_date)
+
+
+
 def get_basic_info(infile):
 	'''
 	get below info from 'ion_params_00.json' file
@@ -33,7 +107,7 @@ def get_basic_info(infile):
 	'''
 	with open(infile,'r') as json_file:
 		json_str = json.load(json_file)
-		seq_date = json_str.get('date','NA')
+		seq_date = json_str['log'].get('start_time','NA')
 		expName = json_str.get('expName','NA')
 		chipType = json_str['exp_json'].get('chipType','NA')
 
@@ -257,7 +331,7 @@ def main():
 	outfile = "%s/%s.summary.xls" % (args.outdir,report_name)
 	of = io.open(outfile,'w',encoding='utf-8')
 	#header = "\t".join(["建库日期","测序日期","expName","报告名称","芯片类型","Barcode","样本名","Pangolin分型","Nextclade分型","样本数据量","均一性","组装N比例","TVC变异位点个数","一致性序列变异位点个数","一致性序列杂合SNP个数","Reads平均长度","平均测序深度","Pool1-Mean Reads per Amplicon","Pool2-Mean Reads per Amplicon","是否提交","提交日期","备注"])
-	header = "\t".join(['chefDate','seqDate','expName','reportName','chipType','Barcode','sampleName','Pangolin','Nextclade','totalReads','Uniformity','consensusN','tvcVarNum','consVarNum','consHetSnpNum','readMeanLength','meanDepth','Pool1-Mean Reads per Amplicon','Pool2-Mean Reads per Amplicon','ifSubmit','submitDate','Note'])
+	header = "\t".join(['seqDate','expName','reportName','chipType','Barcode','sampleName','Pangolin','Nextclade','totalReads (0.5~1M)','Uniformity','consensusN (<1)','tvcVarNum','consVarNum','consHetSnpNum','readMeanLength (>200bp)','meanDepth','Pool1-Mean Reads per Amplicon','Pool2-Mean Reads per Amplicon','P1/P2_Ratio','Loading','Enrichment','Polyclonal','Low Quality','Adapter Dimer','ifSubmit','submitDate','Note'])
 	#of.write(codecs.BOM_UTF8)
 	of.write(header.decode('utf-8')+'\n')
 	
@@ -497,8 +571,17 @@ def main():
 		# Pool2-Mean Reads per Amplicon
 		reads_per_amp_p2 = avg_reads_pool[1]
 		
+		# p1/p2
+		if reads_per_amp_p2 != 0:
+			p1_vs_p2 = round(reads_per_amp_p1/float(reads_per_amp_p2),3)
+		else:
+			p1_vs_p2 = 'NA'
+
 		print("reads_per_amp_p1 is: %s" % (reads_per_amp_p1))
 		print("reads_per_amp_p2 is: %s" % (reads_per_amp_p2))
+		print("reads_per_amp_p1 / reads_per_amp_p2 is: %s" % (p1_vs_p2))
+
+		
 		print("\n\n\n")
 		# 是否提交
 		if_submit = 'NA'
