@@ -105,12 +105,12 @@ def get_basic_info(infile):
 	exp_info = {}
 	with open(infile,'r') as exp_mata:
 		for line in exp_mata:
-			vals = line.strip().split('=')
+			vals = line.split('=')
 			k = vals[0].strip()
 			v = vals[1].strip()
 			exp_info[k] = v
 
-	seq_date_tmp = exp_info.get('Analysis Date','NA')
+	seq_date_tmp = exp_info.get('Run Date','NA')
 	if seq_date_tmp != 'NA':
 		seq_date = seq_date_tmp.split(' ')[0]
 	else:
