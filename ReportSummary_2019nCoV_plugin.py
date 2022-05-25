@@ -84,13 +84,18 @@ def get_filter_info(infile):
 	
 	return([poly_pct,primer_dimer,low_qual])
 
-def get_analysis_date(infile):
-	# expMeta.dat
+def get_basic_info(infile):
 	'''
+	get below info from 'expMeta.dat' file
+		* seq time
+		* expName
+		* chip type
+	
 	Run Name = R_2022_03_10_17_29_05_user_GSS5PR-0070-144-ludaopei-530chip2
 	Run Date = 2022-03-10 09:33:46+00:00
 	Run Flows = 800
 	...
+	Chip Type = 510
 	Instrument = GSS5PR-0070
 	Flow Order = TACGTACGTCTGAGCATCGATCGATGTACAGC
 	Analysis Date = 2022-03-10
@@ -105,24 +110,17 @@ def get_analysis_date(infile):
 			v = vals[1].strip()
 			exp_info[k] = v
 
-	seq_date = exp_info.get('Analysis Date','NA')
-	return(seq_date)
+	seq_date_tmp = exp_info.get('Analysis Date','NA')
+	if seq_date_tmp != 'NA':
+		seq_date = seq_date_tmp.split(' ')[0]
+	else:
+		seq_date = 'NA'
 
+	exp_name = exp_info.get('Run Name','NA')
+	chip_type = exp_info.get('Chip Type','NA')
 
-def get_basic_info(infile):
-	'''
-	get below info from 'ion_params_00.json' file
-		* seq time
-		* expName
-		* chip type
-	'''
-	with open(infile,'r') as json_file:
-		json_str = json.load(json_file)
-		seq_date = json_str['log'].get('start_time','NA')
-		expName = json_str.get('expName','NA')
-		chipType = json_str['exp_json'].get('chipType','NA')
+	return([seq_date,exp_name,chip_type])
 
-	return([seq_date,expName,chipType])
 
 def barcode_to_sampleName(infile): # ion_params_00.json
 	bc2name = {}
@@ -371,9 +369,8 @@ def main():
 
 	# get sequencing date / expName / chip type
 	basic_info = get_basic_info(ion_params_00_json)
-	seq_date = basic_info[0]
-	expName  = basic_info[1]
-	chipType = basic_info[2]
+	expName  = basic_info[0]
+	chipType = basic_info[1]
 
 	# get report name
 	report_name = os.path.basename(args.report_dir)
