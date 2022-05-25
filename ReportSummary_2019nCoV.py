@@ -14,11 +14,25 @@ from django.utils.functional import cached_property
 from django.conf import settings
 from django.template.loader import render_to_string
 
+'''
+change log
+  2022-5-22: 1.0.0.0
 
+  2022-5-25: 1.0.0.1
+    1)modify header;
+    2)add some cols:
+      * P1/P2_Ratio
+      * Loading(%)
+      * Enrichment(%)
+      * Polyclonal(%)
+      * Low Quality(%)
+      * Primer Dimer(%)
 
+  ...
+'''
 
 class ReportSummary_2019nCoV(IonPlugin):
-  version = '1.0.0.0'
+  version = '1.0.0.1'
   author  = "longfei.fu@thermofisher.com"
   date    = "2022-5-12"
   runtypes = [RunType.FULLCHIP, RunType.THUMB, RunType.COMPOSITE]
