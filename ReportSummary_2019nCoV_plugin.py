@@ -109,7 +109,6 @@ def get_analysis_date(infile):
 	return(seq_date)
 
 
-
 def get_basic_info(infile):
 	'''
 	get below info from 'ion_params_00.json' file
@@ -399,6 +398,14 @@ def main():
 		# IonCode_0303
 		sample_name = all_barcodes[bc] # maybe None
 		
+		# get seq date
+		expMeta = "%s/expMeta.dat" % (args.report_dir)
+		if os.path.exists(expMeta):
+			seq_date = get_analysis_date(expMeta)
+		else:
+			seq_date = 'NA'
+		print("seq date is: %s" % (seq_date))
+
 		# pangolin result
 		print("check SARS_CoV_2_lineageID plugin results...")
 		pangolin_dir = get_first_run_plugin_result(args.report_dir,'SARS_CoV_2_lineageID')
@@ -592,10 +599,11 @@ def main():
 		print("reads_per_amp_p1 is: %s" % (reads_per_amp_p1))
 		print("reads_per_amp_p2 is: %s" % (reads_per_amp_p2))
 		print("reads_per_amp_p1 / reads_per_amp_p2 is: %s" % (p1_vs_p2))
+		
 
-		# loading file
 		print("check loading info...")
 		loading_files = glob.glob("%s/serialized_*.json" % (args.report_dir))
+		print(loading_files)
 		if len(loading_files) > 0:
 			loading_file = loading_files[0]
 			load_info = get_loading_info(loading_file)
@@ -608,6 +616,7 @@ def main():
 
 		print("check polyclonal/low_qual/primer_dimer info...")
 		qc_file = "%s/basecaller_results/BaseCaller.json" % (args.report_dir)
+		print(qc_file)
 		# check if exists
 		if os.path.exists(qc_file):
 			qc_info = get_filter_info(qc_file)
@@ -615,12 +624,14 @@ def main():
 			qc_info = ['NA','NA','NA']
 
 		polyclonal = qc_info[0]
-		primer_dimer = qc_info[]
-		low_qual = qc_info[]
+		primer_dimer = qc_info[1]
+		low_qual = qc_info[2]
 
-		primer_dimer = ''
+		print("polyclonal pct is: %s" % (polyclonal))
+		print("primer_dimer pct is: %s" % (primer_dimer))
+		print("low quality pct is: %s" % (low_qual))
+		print("\n")
 
-		print("\n\n\n")
 		# 是否提交
 		if_submit = 'NA'
 
@@ -630,7 +641,7 @@ def main():
 		# 备注
 		note = 'NA'
 			
-		h = (str(chef_date),str(seq_date),expName,report_name,str(chipType),bc,sample_name,pangolin_result,nextclade_result,str(reads_num),str(uniformity),str(cons_N_pct),str(tvc_var_num),str(cons_var_num),str(cons_het_snp_num),str(read_mean_len),str(mean_depth),str(reads_per_amp_p1),str(reads_per_amp_p2),if_submit,submit_date,note)
+		h = (str(seq_date),expName,report_name,str(chipType),bc,sample_name,pangolin_result,nextclade_result,str(reads_num),str(uniformity),str(cons_N_pct),str(tvc_var_num),str(cons_var_num),str(cons_het_snp_num),str(read_mean_len),str(mean_depth),str(reads_per_amp_p1),str(reads_per_amp_p2),str(p1_vs_p2),str(loading),str(enrichment),str(polyclonal),str(primer_dimer),str(low_qual),if_submit,submit_date,note)
 		val = "\t".join(h)
 		of.write(val.decode('utf-8')+'\n')
 	of.close()
