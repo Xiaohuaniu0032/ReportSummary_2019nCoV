@@ -33,27 +33,36 @@ def get_loading_info(infile):
 	/Auto_xxx/serialized_Auto_user_GSS5PR-0070-144-ludaopei-530chip2_502.json
 	'''
 
+	pk_flag = 0
 	with open(infile,'r') as json_file:
-		json_str = json.load(json_file)
-		addressable = json_str['fields'].get('adjusted_addressable','NA')
-		final_usable_reads = json_str['fields'].get('libFinal','NA')
+		json_list = json.load(json_file)
+		for line in json_list:
+			if line['model'] == 'rundb.analysismetrics':
+				print(line)
+				pk_flag = 1 # json file has this field
+				pk = line['pk']
+				print("pk is: %s" % (pk))
+				#addressable = line['fields'].get('adjusted_addressable','NA')
+				#final_usable_reads = line['fields'].get('libFinal','NA')
+				load_rate = round(line['fields'].get('loading'),1) # load = bead / adjusted_addressable
 		
-		load_rate = json_str['fields'].get('loading','NA') # bead / adjusted_addressable
+				# enrichment = live / bead
+				live = int(line['fields'].get('live')) # 34182286
+				bead = int(line['fields'].get('bead')) # 34183815
 		
-		# enrichment = live / bead
-		live = int(json_str['fields'].get('live')) # 34182286
-		bead = int(json_str['fields'].get('bead')) # 34183815
-		
-		if bead != 0:
-			enrichment = round(float(live)/bead,2)
-		else:
-			enrichment = 'NA'
+				if bead != 0:
+					enrichment = round(live/float(bead) * 100,1)
+				else:
+					enrichment = 'NA'
 
-		# live = lib_live + tf_live
-		lib_live = json_str['fields'].get('lib') # 33914533
-		tf_live  = json_str['fields'].get('tf')  # 267753
-
-	return([final_usable_reads,load_rate,enrichment])
+				# live = lib_live + tf_live
+				#lib_live = line['fields'].get('lib') # 33914533
+				#tf_live  = line['fields'].get('lib') # 267753
+				
+	if pk_flag == 1:
+		return([load_rate,enrichment])
+	else:
+		return(['NA','NA'])
 
 def get_filter_info(infile):
 	'''
@@ -82,7 +91,7 @@ def get_filter_info(infile):
 		dimer_pct = 'NA'
 		lowQual_pct = 'NA'
 	
-	return([poly_pct,primer_dimer,low_qual])
+	return([poly_pct,dimer_pct,lowQual_pct])
 
 def get_basic_info(infile):
 	'''
@@ -341,7 +350,7 @@ def main():
 	outfile = "%s/%s.summary.xls" % (args.outdir,report_name)
 	of = io.open(outfile,'w',encoding='utf-8')
 	#header = "\t".join(["建库日期","测序日期","expName","报告名称","芯片类型","Barcode","样本名","Pangolin分型","Nextclade分型","样本数据量","均一性","组装N比例","TVC变异位点个数","一致性序列变异位点个数","一致性序列杂合SNP个数","Reads平均长度","平均测序深度","Pool1-Mean Reads per Amplicon","Pool2-Mean Reads per Amplicon","是否提交","提交日期","备注"])
-	header = "\t".join(['seqDate','expName','reportName','chipType','Barcode','sampleName','Pangolin','Nextclade','totalReads (0.5~1M)','Uniformity','consensusN (<1)','tvcVarNum','consVarNum','consHetSnpNum','readMeanLength (>200bp)','meanDepth','Pool1-Mean Reads per Amplicon','Pool2-Mean Reads per Amplicon','P1/P2_Ratio','Loading','Enrichment','Polyclonal','Low Quality','Primer Dimer','ifSubmit','submitDate','Note'])
+	header = "\t".join(['seqDate','expName','reportName','chipType','Barcode','sampleName','Pangolin','Nextclade','totalReads (0.5~1M)','Uniformity(%)','consensusN(%) (<1%)','tvcVarNum','consVarNum','consHetSnpNum','readMeanLength (>200bp)','meanDepth','Pool1-Mean Reads per Amplicon','Pool2-Mean Reads per Amplicon','P1/P2_Ratio','Loading(%)','Enrichment(%)','Polyclonal(%)','Low Quality(%)','Primer Dimer(%)','ifSubmit','submitDate','Note'])
 	#of.write(codecs.BOM_UTF8)
 	of.write(header.decode('utf-8')+'\n')
 	
@@ -579,15 +588,16 @@ def main():
 		reads_per_amp_p2 = avg_reads_pool[1]
 		
 		# p1/p2
-		if reads_per_amp_p2 != 0:
-			p1_vs_p2 = round(reads_per_amp_p1/float(reads_per_amp_p2),3)
+
+		if reads_per_amp_p2 != 'NA' and reads_per_amp_p2 != 0:
+			p1_vs_p2 = round(reads_per_amp_p1/float(reads_per_amp_p2),2)
 		else:
 			p1_vs_p2 = 'NA'
 
 		print("reads_per_amp_p1 is: %s" % (reads_per_amp_p1))
 		print("reads_per_amp_p2 is: %s" % (reads_per_amp_p2))
 		print("reads_per_amp_p1 / reads_per_amp_p2 is: %s" % (p1_vs_p2))
-		
+		print("\n\n")		
 
 		print("check loading info...")
 		loading_files = glob.glob("%s/serialized_*.json" % (args.report_dir))
@@ -599,8 +609,9 @@ def main():
 			# no serialized_*.json file
 			load_info = ['NA','NA','NA']
 		
-		loading = load_info[1]
-		enrichment = load_info[2]
+		loading = load_info[0]
+		enrichment = load_info[1]
+		print("\n\n")
 
 		print("check polyclonal/low_qual/primer_dimer info...")
 		qc_file = "%s/basecaller_results/BaseCaller.json" % (args.report_dir)
@@ -629,7 +640,7 @@ def main():
 		# 备注
 		note = 'NA'
 			
-		h = (str(seq_date),expName,report_name,str(chipType),bc,sample_name,pangolin_result,nextclade_result,str(reads_num),str(uniformity),str(cons_N_pct),str(tvc_var_num),str(cons_var_num),str(cons_het_snp_num),str(read_mean_len),str(mean_depth),str(reads_per_amp_p1),str(reads_per_amp_p2),str(p1_vs_p2),str(loading),str(enrichment),str(polyclonal),str(primer_dimer),str(low_qual),if_submit,submit_date,note)
+		h = (str(seq_date),expName,report_name,str(chipType),bc,sample_name,pangolin_result,nextclade_result,str(reads_num),str(uniformity),str(cons_N_pct),str(tvc_var_num),str(cons_var_num),str(cons_het_snp_num),str(read_mean_len),str(mean_depth),str(reads_per_amp_p1),str(reads_per_amp_p2),str(p1_vs_p2),str(loading),str(enrichment),str(polyclonal),str(low_qual),str(primer_dimer),if_submit,submit_date,note)
 		val = "\t".join(h)
 		of.write(val.decode('utf-8')+'\n')
 	of.close()
