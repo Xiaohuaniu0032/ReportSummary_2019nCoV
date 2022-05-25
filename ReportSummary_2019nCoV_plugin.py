@@ -106,6 +106,7 @@ def get_basic_info(infile):
 	with open(infile,'r') as exp_mata:
 		for line in exp_mata:
 			vals = line.split('=')
+			print(vals)
 			k = vals[0].strip()
 			v = vals[1].strip()
 			exp_info[k] = v
@@ -354,7 +355,22 @@ def main():
 	'''
 	plugin_log = "%s/plugin.log" % (args.outdir)
 	of_plugin = open(plugin_log,'w')
+
+	# get sequencing date / expName / chip type
+	exp_meta = "%s/expMeta.dat" % (args.report_dir)
+	if os.path.exists(exp_meta):
+		basic_info = get_basic_info(exp_meta)
+	else:
+		basic_info = ['NA','NA','NA']
 	
+	seq_date = basic_info[0]
+	expName  = basic_info[1]
+	chipType = basic_info[2]
+
+	# get report name
+	report_name = os.path.basename(args.report_dir)
+
+	############################## for each barcode ##############################
 	ion_params_00_json = os.path.join(args.report_dir,'ion_params_00.json')
 	# check ion_params_00.json exists
 	if os.path.exists(ion_params_00_json):
@@ -362,26 +378,9 @@ def main():
 		pass
 	else:
 		sys.exit('[Error: can not find ion_params_00.json file, will exit]')
-
-	# get libary date
-	chef_date = 'NA'
-	#print("chef date is: %s" % (chef_date)
-
-	# get sequencing date / expName / chip type
-	basic_info = get_basic_info(ion_params_00_json)
-	expName  = basic_info[0]
-	chipType = basic_info[1]
-
-	# get report name
-	report_name = os.path.basename(args.report_dir)
-
-	# get total reads number
-	total_reads = 'NA'
-
-	############################## for each barcode ##############################
-	#bams = get_bams(args.report_dir) # [IonXpress_003_rawlib.bam,...,]
-	all_barcodes = barcode_to_sampleName(ion_params_00_json)
 	
+	# get all barcodes info
+	all_barcodes = barcode_to_sampleName(ion_params_00_json)
 	# first print all barcode and its name
 	print("########## sample info is ##########")
 	print("Barcode\tSampleName")
@@ -394,14 +393,6 @@ def main():
 		print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>stat %s..." % bc)
 		# IonCode_0303
 		sample_name = all_barcodes[bc] # maybe None
-		
-		# get seq date
-		expMeta = "%s/expMeta.dat" % (args.report_dir)
-		if os.path.exists(expMeta):
-			seq_date = get_analysis_date(expMeta)
-		else:
-			seq_date = 'NA'
-		print("seq date is: %s" % (seq_date))
 
 		# pangolin result
 		print("check SARS_CoV_2_lineageID plugin results...")
