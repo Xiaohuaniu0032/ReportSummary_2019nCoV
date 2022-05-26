@@ -350,7 +350,7 @@ def main():
 	outfile = "%s/%s.summary.xls" % (args.outdir,report_name)
 	of = io.open(outfile,'w',encoding='utf-8')
 	#header = "\t".join(["建库日期","测序日期","expName","报告名称","芯片类型","Barcode","样本名","Pangolin分型","Nextclade分型","样本数据量","均一性","组装N比例","TVC变异位点个数","一致性序列变异位点个数","一致性序列杂合SNP个数","Reads平均长度","平均测序深度","Pool1-Mean Reads per Amplicon","Pool2-Mean Reads per Amplicon","是否提交","提交日期","备注"])
-	header = "\t".join(['seqDate','expName','reportName','chipType','Barcode','sampleName','Pangolin','Nextclade','totalReads (0.5~1M)','Uniformity(%)','consensusN(%) (<1%)','genomeCoverage(%)','tvcVarNum','consVarNum','consHetSnpNum','readMeanLength (>200bp)','meanDepth','Pool1-Mean Reads per Amplicon','Pool2-Mean Reads per Amplicon','P1/P2_Ratio','Loading(%)','Enrichment(%)','Polyclonal(%)','Low Quality(%)','Primer Dimer(%)','ifSubmit','submitDate','Note'])
+	header = "\t".join(['seqDate','expName','reportName','chipType','Barcode','sampleName','Pangolin','Nextclade','totalReads (0.5~1M)','Uniformity(%)','consensusN(%) (<1%)','genomeCoverage(%) (>99%)','tvcVarNum','consVarNum','consHetSnpNum','readMeanLength (>200bp)','meanDepth','Pool1-Mean Reads per Amplicon','Pool2-Mean Reads per Amplicon','P1/P2_Ratio','Loading(%)','Enrichment(%)','Polyclonal(%)','Low Quality(%)','Primer Dimer(%)','ifSubmit','submitDate','Note'])
 	#of.write(codecs.BOM_UTF8)
 	of.write(header.decode('utf-8')+'\n')
 	
@@ -520,7 +520,10 @@ def main():
 		cons_N_pct = cons_info[0]
 
 		# coverage
-		genome_cov = 1 - cons_N_pct
+		if cons_N_pct != 'NA':
+			genome_cov = 100 - float(cons_N_pct)
+		else:
+			genome_cov = 'NA'
 
 		# 一致性序列变异位点个数
 		cons_var_num = cons_info[1]
