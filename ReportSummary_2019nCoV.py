@@ -27,12 +27,14 @@ change log
       * Polyclonal(%)
       * Low Quality(%)
       * Primer Dimer(%)
-
+  
+  2022-5-26: 1.0.0.2
+    1) add genomeCoverage(%) col [1-consN]
   ...
 '''
 
 class ReportSummary_2019nCoV(IonPlugin):
-  version = '1.0.0.1'
+  version = '1.0.0.2'
   author  = "longfei.fu@thermofisher.com"
   date    = "2022-5-12"
   runtypes = [RunType.FULLCHIP, RunType.THUMB, RunType.COMPOSITE]
